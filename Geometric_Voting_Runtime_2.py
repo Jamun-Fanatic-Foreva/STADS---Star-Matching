@@ -92,8 +92,12 @@ def uncertaintyAngularDistance(u1, u2):
 # Initializing centroid data and the corresponding centroid uncertainty data generated from running feature extraction 
 
 ### Example Initialization
-STAR_CENTROIDS = np.array([[-3,4], [8,-6], [10,10], [5,5]]) 
-STAR_CENTROIDS_UNCERTAINTY = np.array([[0.06], [0.004], [0.001], [0.002]])
+'''
+STAR_CENTROIDS = np.array([[-3,4], [8,-6], [10,10], [5,5], [0,-2.3]]) 
+STAR_CENTROIDS_UNCERTAINTY = np.array([[0.06], [0.004], [0.001], [0.002], [0.006]])
+'''
+STAR_CENTROIDS = np.random.random((20,2))
+STAR_CENTROIDS_UNCERTAINTY = np.random.random(20)*0.0001
 
 #Number of stars identified on sensor
 NUM_STARS = STAR_CENTROIDS.shape[0]
@@ -134,8 +138,7 @@ for i in range(NUM_STARS):
     # Range(i+1, NUM_STARS) to avoid processing on cases where (j == i) => angular distance between the same image star
     for j in range(i+1, NUM_STARS):
         d_ij = dotProduct(STAR_VECTORS[i], STAR_VECTORS[j])
-        e_ij = uncertaintyAngularDistance(STAR_CENTROIDS_UNCERTAINTY[i], STAR_CENTROIDS_UNCERTAINTY[j])[0]
-            # [0] added to extract only float value from array-datatype
+        e_ij = uncertaintyAngularDistance(STAR_CENTROIDS_UNCERTAINTY[i], STAR_CENTROIDS_UNCERTAINTY[j])
         
         # Creating range <R_ij>
         r_ij = [d_ij - e_ij, d_ij + e_ij]
@@ -169,7 +172,7 @@ for i in range(NUM_STARS):
 for i in range(NUM_STARS):
     for j in range(i+1, NUM_STARS):
         d_ij = dotProduct(STAR_VECTORS[i], STAR_VECTORS[j])
-        e_ij = uncertaintyAngularDistance(STAR_CENTROIDS_UNCERTAINTY[i], STAR_CENTROIDS_UNCERTAINTY[j])[0]
+        e_ij = uncertaintyAngularDistance(STAR_CENTROIDS_UNCERTAINTY[i], STAR_CENTROIDS_UNCERTAINTY[j])
         r_ij = [d_ij - e_ij, d_ij + e_ij]
         
         # Reading the 'most probable' catalogue star ID of corresponding image star
