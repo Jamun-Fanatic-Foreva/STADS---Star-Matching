@@ -96,12 +96,14 @@ def uncertaintyAngularDistance(u1, u2):
 STAR_CENTROIDS = np.array([[-3,4], [8,-6], [10,10], [5,5], [0,-2.3]]) 
 STAR_CENTROIDS_UNCERTAINTY = np.array([[0.06], [0.004], [0.001], [0.002], [0.006]])
 '''
-STAR_CENTROIDS = np.random.random((20,2))
+STAR_CENTROIDS = np.random.random((20,2))*2
 STAR_CENTROIDS_UNCERTAINTY = np.random.random(20)*0.0001
 
-#Number of stars identified on sensor
+# Number of stars identified on sensor
 NUM_STARS = STAR_CENTROIDS.shape[0]
 
+# Asserting if the number of rows in STAR_CENTROIDS_UNCERTAINTY & STAR_CENTROIDS match
+assert STAR_CENTROIDS.shape[0] == STAR_CENTROIDS_UNCERTAINTY.shape[0], 'STAR_CENTROIDS != STAR_CENTROIDS_UNCERTAINTY' 
 
 # Initializing star - catalogue 
 CATALOGUE = pd.read_csv("Modified Star Catalogue.csv")
@@ -165,7 +167,9 @@ VOTE_LIST_2 = np.vstack((temp, np.zeros_like(temp),np.zeros_like(temp))).T
 
 # Appending the value of the most repeated catalogue star ID from list of voted stars
 for i in range(NUM_STARS):
-    VOTE_LIST_2[i,1] = mode(VOTE_LIST[i,1])[0][0]
+    
+    # If no catalgoe star has voted on the image star, zero value is set
+    VOTE_LIST_2[i,1] = mode(VOTE_LIST[i,1])[0][0] if mode(VOTE_LIST[i,1])[0].shape != (0,) else 0
     
 
 # Running second iteration of Geometric Voting Algorithm - <validation step>
@@ -178,12 +182,16 @@ for i in range(NUM_STARS):
         # Reading the 'most probable' catalogue star ID of corresponding image star
         s1, s2 = VOTE_LIST_2[i, 1], VOTE_LIST_2[j, 1]
         
+        # Ignoring the case when the corresponding catalogue star ID for a given image star == 0
+        if s1 == 0 or s2 == 0:
+            continue
+        
         # Finding angular distance between the 'most probable' stars from <REF_ARR>
         ind1 = np.where( (REF_ARR[:, 0] == s1) & (REF_ARR[:,1] == s2) ) 
         
         #Accounting for case when <REF_ARR> does not have the angular distance between the specified catalogue star IDs
         if ind1[0].shape != (0,):
-            if REF_ARR[ind1]>r_ij[0] and REF_ARR[ind1]<r_ij[1]:
+            if REF_ARR[ind1][0,2]>r_ij[0] and REF_ARR[ind1][0,2]<r_ij[1]:
                 VOTE_LIST_2[i,2] +=1
                 VOTE_LIST_2[j,2] +=1
             continue
@@ -192,7 +200,7 @@ for i in range(NUM_STARS):
         ind2 = np.where( (REF_ARR[:, 0] == s2) & (REF_ARR[:,1] == s1) )
         #Accounting for case when <REF_ARR> does not have the angular distance between the specified catalogue star IDs
         if ind2[0].shape != (0,):
-            if REF_ARR[ind2]>r_ij[0] and REF_ARR[ind2]<r_ij[1]:
+            if REF_ARR[ind2][0,2]>r_ij[0] and REF_ARR[ind2][0,2]<r_ij[1]:
                 VOTE_LIST_2[i,2] +=1
                 VOTE_LIST_2[j,2] +=1
 
