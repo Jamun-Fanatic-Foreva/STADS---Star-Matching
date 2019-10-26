@@ -1,3 +1,3 @@
 # Star Catalogue
 
-All variants of star catalogue are published here.
+All variants of star catalogues are published here.
