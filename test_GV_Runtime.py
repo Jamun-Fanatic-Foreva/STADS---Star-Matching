@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import time, gc
 import GV_Runtime as gv_r
 import Star_Image_Generation as sig
 
@@ -144,6 +143,137 @@ def norm(row, col_names):
     # Return norm
     return np.sqrt(x*x + y*y + z*z)
 
+def test_starVectorTransform():
+    '''
+    Function to test <starVectorTransform>
+    '''
+    cent, f = [0,0], 10
+    result = [0,0,1]
+    assert list(gv_r.starVectorTransform(cent, f)) == result, 'Error: Testcase - 1'
+    
+    cent, f = [5,5], 5
+    # Round answer to neglect numerical error
+    result = np.round( np.array([1,1,1])/np.sqrt(3) , 10 )
+    result = list(result)
+    # Round answer to neglect numerical error
+    check = np.round( gv_r.starVectorTransform(cent, f) , 10 )
+    check = list(check)
+    assert check == result, 'Error: Testcase - 2'
+    
+    cent, f = [-5,10], 50
+    # Round answer to neglect numerical error
+    result = np.round( np.array([-1,2,10])/np.sqrt(105) , 10 )
+    result = list(result)
+    # Round answer to neglect numerical error
+    check = np.round( gv_r.starVectorTransform(cent, f) , 10 )
+    check = list(check)
+    assert check == result, 'Error: Testcase - 3'
+    
+    print('starVectorTransform - Tested')
+    
+    
+def test_vectorAngularDistance():
+    '''
+    Function to test <vectorAngularDistance>
+    '''
+    
+    v1, v2 = np.array([1,0,0]), np.array([0,1,0])
+    result = 90.0
+    assert gv_r.vectorAngularDistance(v1, v2) == result, 'Error: Testcase - 1'
+    
+    v1, v2 = np.array([1,1,0])/np.sqrt(2), np.array([1,0,0])
+    result = 45.0
+    assert gv_r.vectorAngularDistance(v1, v2) == result, 'Error: Testcase - 2'
+    
+    v1, v2 = np.array([1,1,0])/np.sqrt(2), np.array([-1,-1,0])/np.sqrt(2)
+    result = 180
+    assert gv_r.vectorAngularDistance(v1,v2) == result, 'Error: Testcase - 3'
+    
+    
+    print('vectorAngularDistance - Tested')
+
+def test_uncertaintyAngularDistance():
+    '''
+    Function to test <uncertaintyAngularDistance>
+    '''
+    
+    u1, u2 = 0, 1
+    result = 1
+    assert gv_r.uncertaintyAngularDistance(u1, u2) == result, 'Error: Testcase - 1'
+    
+    u1, u2 = 0.5, 0.5
+    result = 1
+    assert gv_r.uncertaintyAngularDistance(u1, u2) == result, 'Error: Testcase - 2'
+    
+    u1, u2 = -0.5, 1
+    result = 1.5
+    assert gv_r.uncertaintyAngularDistance(u1, u2) == result, 'Error: Testcase - 1'
+    
+    print('uncertaintyAngularDistance - Tested')
+    
+def test_gvAlgorithm_rigid():
+    '''
+    Funtion to test <gvAlgorithm> with just one testcase, with a constant uncertainty value
+    for all the centroids of the stars
+    '''    
+    # Initialize main and processed star - catalogues
+    CATALOGUE = pd.read_csv(r"F:\IIT Bombay\SatLab\Star Tracker\Programs\Catalogues\Modified Star Catalogue.csv")
+    REFERENCE= pd.read_csv(r'F:\IIT Bombay\SatLab\Star Tracker\Programs\Catalogues\Reduced_Catalogue.csv', usecols=['Star_ID1', 'Star_ID2', 'Ang_Distance'])
+
+    # Converts reference catalogue to numpy array for faster implementation
+    ref_array = REFERENCE.to_numpy()
+    
+    # Generate array of stars using <generateImageDataframe> about a given point, with a specified right-ascension & declination value,
+    # with a max circular-FOV and maximum magnitude limit value
+    # FIXED VALUES
+    # >>>ref_ra=5, ref_dec=5, ref_ang_dist=10, mag_limit=4.5
+    result = sig.generateImageDataframe(CATALOGUE, ref_ra=5, ref_dec=5, ref_ang_dist=10, mag_limit=4.5, ra_hrs=True) 
+ 
+    # Generate <temp> dataframe which has following columns: Star_ID, RA/Dec
+    temp = result
+    temp = temp.drop(['Ref_RA', 'Ref_Dec', 'Mag'], axis = 1)
+    temp.index = list(range(temp.shape[0]))
+
+    # Generate the (x,y,z)-vect components for each star
+    cols = ['RA', 'Dec']
+    temp['x_vect'] = temp.apply(cartesianVector_x, axis = 1, col_names=cols)
+    temp['y_vect'] = temp.apply(cartesianVector_y, axis = 1, col_names=cols)
+    temp['z_vect'] = temp.apply(cartesianVector_z, axis = 1, col_names=cols)
+    
+    #  Generate the norm of the cartesian vector for each star
+    cols = ['x_vect', 'y_vect', 'z_vect']
+    temp['norm'] = temp.apply(norm, axis = 1, col_names = cols )
+    
+    # Generate <test_df> dataframe which has following columns: Star_ID, RA/Dec, (x,y,z)-vect components, norm of vector
+    test_df = temp
+    
+    # Generate array of Star_IDs alone
+    true_stars = temp.Star_ID.to_numpy()    
+    
+    # Generate <temp1> dataframe which has following columns: (x,y,z)-vect components
+    temp1 = temp.drop(['Star_ID', 'RA', 'Dec', 'norm','Ang_Dist'], axis = 1)
+    
+    # Generate np.arrays of the star vectors
+    st_vect = temp1.to_numpy()
+    # Generate constant np.array of uncertainty values for each vector
+    # FIXED VALUE
+    # >>> eps = 0.02
+    eps = 0.02
+    st_uncert = np.ones(st_vect.shape[0]) * (eps)
+    
+    # Running Geometric Voting Algorithm on generated star-vectors and star uncertainty values
+    final_result = gv_r.gvAlgorithm(ref_array, st_vect, st_uncert, return_VoteList_1=False)
+    
+    check_arr1 = list(final_result[:, 1]==true_stars)
+    answer1 = [True, False, False, False, False, False, False, True, True, False, False, True, True, False, False, False]
+    assert check_arr1 == answer1, 'Error: Testcase - 1'
+    
+    check_arr2 = list(final_result[:, 2])
+    answer2 = [4, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 4, 4, 0, 0, 0]
+    assert check_arr2 == answer2, 'Error: Testcase - 2'
+    
+    print('gvAlgorithm_Rigid - Tested')
+    
 
 def test_gvAlgorithm():
     '''
@@ -206,7 +336,11 @@ def test_gvAlgorithm():
     print('False = ', count_false)
     
 def main():
-    test_gvAlgorithm()
+    test_starVectorTransform()
+    test_vectorAngularDistance()
+    test_uncertaintyAngularDistance()
+    test_gvAlgorithm_rigid()
+    #test_gvAlgorithm()
 
 if __name__ == "__main__":
     main()
