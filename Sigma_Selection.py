@@ -10,10 +10,10 @@ def genSigmaCatalogue(CATALOGUE, mag_limit = 6, FOV_limit = 20):
     Sigma between star A and star B is defined as (1/6) of the angular 
     distance between the two stars.
     
-    Such values of sigma is calculated for star A to every other star 
+    Such values of sigma are calculated for star A to every other star 
     in the catalogue that are its nearest neighbours, i.e., all those
     stars within a circular FOV defined by FOV_limit.
-    This is set of sigma values is defined as sigma_n.
+    This set of sigma values is defined as sigma_n.
     
     The mean of all the elements of sigma_n gives us mu_n.
     This mean value is paired with the corresponding star A.
@@ -31,7 +31,7 @@ def genSigmaCatalogue(CATALOGUE, mag_limit = 6, FOV_limit = 20):
         
     FOV_limit: floating-point number, default = 20
         Defines the circular radius (in degrees) which demarcates which stars from the 
-        catalogue are considered as nearest neighbours for a given star
+        catalogue are to be considered as nearest neighbours for a given star
         
     Returns
     -------
@@ -131,14 +131,14 @@ def main():
     CATALOGUE.sort_values('Mag', inplace=True)
     
     # Run function
-    REF_DF = genSigmaCatalogue(CATALOGUE, mag_limit = 6, FOV_limit = 20)
+    result = genSigmaCatalogue(CATALOGUE, mag_limit = 6, FOV_limit = 20)
     
-    # Sort <REF_DF>
-    REF_DF.sort_values('mu_n', inplace=True)
+    # Sort <result>
+    result.sort_values('mu_n', inplace=True)
     
     
-    # Generates CSV of <REF_DF>
-    REF_DF.to_csv('SigmaCatalogue.csv', index = False)
+    # Generates CSV of <result>
+    result.to_csv('SigmaCatalogue.csv', index = False)
     print('Done')
     
 if __name__ == '__main__':
