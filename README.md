@@ -14,3 +14,6 @@ https://docs.google.com/document/d/1m1yCF6NE-ZoapInyXEXqhVkh1Os9Gm8DsPWeUSpGNSs/
 
 * test_GV_Runtime.py
 https://docs.google.com/document/d/17qyA3V-qH5Oq-hI5w1154mV4nfVvgRLek4CLW4H5eAc/edit?usp=sharing
+
+* Sigma_Selection.py
+https://docs.google.com/document/d/1j1r_w3Ct-SqaetRFyI6RoJ8_-HJvDWE7bo6IejBduKM/edit?usp=sharing
