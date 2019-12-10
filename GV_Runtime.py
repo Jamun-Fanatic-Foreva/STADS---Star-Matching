@@ -26,6 +26,9 @@ def starVectorTransform(centroid, focal_length=10):
     # Extracts (x,y) components
     x, y = centroid
     
+    # Assert focal length != 0
+    assert focal_length != 0, 'Error: focal_length = 0'
+    
     # Given Formula
     temp = np.power(((x/focal_length)**2 + (y/focal_length)**2 + 1), -0.5)
     ux = (x/focal_length)
@@ -63,28 +66,7 @@ def vectorAngularDistance(vect1, vect2):
     # Return value in degrees
     return np.degrees(np.arccos(dot_product))
 
-def uncertaintyAngularDistance(u1, u2):
-    '''
-    Returns the value of net uncertainty between the centroid data of two image stars
-    
-    <Formula> - Simple Addition
-    
-    Parameters
-    ----------
-    u1 : np.array, floating-point number
-        Input uncertainty value of image star - 1
-        
-    u2 : np.array, floating-point number
-        Input uncertainty value of image star - 2
-          
-    Returns
-    -------
-    y : floating-point number
-        Scalar value of net uncertainty
-    '''
-    return u1 + u2
-
-def starMatch(REF_ARR, STAR_CENTROIDS, STAR_CENTROIDS_UNCERTAINTY, FOC_LEN=10, return_VoteList_1 = False):
+def starMatch(REF_ARR, STAR_CENTROIDS, GLOBAL_SIGMA, FOC_LEN=10, return_VoteList_1 = False):
     '''
     Generates list of the matched catalogue stars with its corresponding image star using
     the centroids of image stars
@@ -97,17 +79,18 @@ def starMatch(REF_ARR, STAR_CENTROIDS, STAR_CENTROIDS_UNCERTAINTY, FOC_LEN=10, r
         
     STAR_CENTROIDS : np.array
         Input (x,y) co-ordinates of stars on image plane as generated from feature extraction
-        ####Expexted shape - (N,2), N = number of stars, 2 = (x,y) corrdinate components of each star
+        #### Expexted shape - (N,2), N = number of stars, 2 = (x,y) corrdinate components of each star
         
-    STAR_CENTROIDS_UNCERTAINTY : np.array
-        Input uncertainty value of corresponding star for which the (x,y) co-ordinates are provided
-        #### Expexted shape - (N,1), N = number of stars, 1 = (e) uncertaintity value for each star
+    GLOBAL_SIGMA : float/int
+        Input the global sigma (a single number) in degrees, representing the error in angular distance between stars.
+        This value will be the same for all the stars and is calculated on-ground         
     
     foc_len : floating-point number
         Input focal length of the optic system
     
     return_VoteList_1 : boolean, default = False
-        <True> if final output should return both VOTE_LIST_1 and VOTE_LIST_2 (IN THAT ORDER!) 
+        <True> if final output should return both VOTE_LIST_1 and VOTE_LIST_2
+        #### (IN THAT ORDER!) 
           
     Returns
     -------
@@ -119,16 +102,15 @@ def starMatch(REF_ARR, STAR_CENTROIDS, STAR_CENTROIDS_UNCERTAINTY, FOC_LEN=10, r
     # Assert shape of necessary arrays
     assert REF_ARR.shape[1] == 3, 'ShapeError: REF_ARR'
     assert STAR_CENTROIDS.shape[1] == 2, 'ShapeError: STAR_CENTROIDS'
-    assert STAR_CENTROIDS_UNCERTAINTY.shape == (STAR_CENTROIDS_UNCERTAINTY.shape[0], ), 'ShapeError: STAR_CENTROIDS_UNCERTAINTY'
-    assert STAR_CENTROIDS.shape[0] == STAR_CENTROIDS_UNCERTAINTY.shape[0], 'ShapeError: STAR_CENTROIDS != STAR_CENTROIDS_UNCERTAINTY' 
+    assert type(GLOBAL_SIGMA) == float or type(GLOBAL_SIGMA) == int, 'TypeError: GLOBAL_SIGMA'
     
     # Convert array of centroid data of image stars into corresponding 3D cartesian vector data
     STAR_VECTORS = np.apply_along_axis(starVectorTransform, 1, STAR_CENTROIDS, focal_length=FOC_LEN)
     
-    return gvAlgorithm(REF_ARR, STAR_VECTORS, STAR_CENTROIDS_UNCERTAINTY, return_VoteList_1)
+    return gvAlgorithm(REF_ARR, STAR_VECTORS, GLOBAL_SIGMA, return_VoteList_1)
 
     
-def gvAlgorithm(REF_ARR, STAR_VECTORS, STAR_CENTROIDS_UNCERTAINTY, return_VoteList_1 = False):
+def gvAlgorithm(REF_ARR, STAR_VECTORS, GLOBAL_SIGMA, return_VoteList_1 = False):
     '''
     Matches image star vectors to real stars from the catalogue using the Geometric Voting Algorithm
     
@@ -151,9 +133,13 @@ def gvAlgorithm(REF_ARR, STAR_VECTORS, STAR_CENTROIDS_UNCERTAINTY, return_VoteLi
         Input (x,y,z) unit vectors of stars on image plane with origin at the focal point
         #### Expexted shape - (N,3), N = number of stars, 3 = (x,y,z) vector components of each star
         
-    STAR_CENTROIDS_UNCERTAINTY : np.array
-        Input uncertainty value of corresponding star for which the (x,y) co-ordinates are provided
-        #### Expexted shape - (N,1), N = number of stars, 1 = (e) uncertaintity value for each star
+    GLOBAL_SIGMA : float/int
+        Input the global sigma (a single number) in degrees, representing the error in angular distance between stars.
+        This value will be the same for all the stars and is calculated on-ground   
+        
+    return_VoteList_1 : boolean, default = False
+        <True> if final output should return both VOTE_LIST_1 and VOTE_LIST_2 
+        #### (IN THAT ORDER!) 
           
     Returns
     -------
@@ -165,8 +151,7 @@ def gvAlgorithm(REF_ARR, STAR_VECTORS, STAR_CENTROIDS_UNCERTAINTY, return_VoteLi
     # Assert shape of necessary arrays
     assert REF_ARR.shape[1] == 3, 'ShapeError: REF_ARR'
     assert STAR_VECTORS.shape[1] == 3, 'ShapeError: STAR_CENTROIDS'
-    assert STAR_CENTROIDS_UNCERTAINTY.shape == (STAR_CENTROIDS_UNCERTAINTY.shape[0], ), 'ShapeError: STAR_CENTROIDS_UNCERTAINTY'    
-    assert STAR_VECTORS.shape[0] == STAR_CENTROIDS_UNCERTAINTY.shape[0], 'ShapeError: STAR_VECTORS != STAR_CENTROIDS_UNCERTAINTY' 
+    assert type(GLOBAL_SIGMA) == float or type(GLOBAL_SIGMA) == int, 'ShapeError: GLOBAL_SIGMA'    
     
     # Number of stars identified on sensor
     NUM_STARS = STAR_VECTORS.shape[0]
@@ -180,6 +165,7 @@ def gvAlgorithm(REF_ARR, STAR_VECTORS, STAR_CENTROIDS_UNCERTAINTY, return_VoteLi
     temp = np.array(temp)
     temp[0].remove(1)
     VOTE_LIST_1 = np.vstack((np.arange(0, NUM_STARS), temp)).T
+    
 
     # Run first iteration of Geometric Voting Algorithm 
     for i in range(NUM_STARS):
@@ -187,10 +173,9 @@ def gvAlgorithm(REF_ARR, STAR_VECTORS, STAR_CENTROIDS_UNCERTAINTY, return_VoteLi
         # Range(i+1, NUM_STARS) to avoid processing on cases where (j == i) => angular distance between the same image star
         for j in range(i+1, NUM_STARS):
             d_ij = vectorAngularDistance(STAR_VECTORS[i], STAR_VECTORS[j])
-            e_ij = uncertaintyAngularDistance(STAR_CENTROIDS_UNCERTAINTY[i], STAR_CENTROIDS_UNCERTAINTY[j])
             
             # Creates range <R_ij>
-            r_ij = [d_ij - e_ij, d_ij + e_ij]
+            r_ij = [d_ij - GLOBAL_SIGMA , d_ij + GLOBAL_SIGMA]
             
             # Finds indices of all the elements in <REF_ARR> whose angular distances lie within <R_ij>
             ind = np.where( (REF_ARR[:, 2] >= r_ij[0]) & (REF_ARR[:,2] <= r_ij[1]) )
@@ -214,7 +199,6 @@ def gvAlgorithm(REF_ARR, STAR_VECTORS, STAR_CENTROIDS_UNCERTAINTY, return_VoteLi
     temp = np.arange(0, NUM_STARS)
     VOTE_LIST_2 = np.vstack((temp, np.zeros_like(temp),np.zeros_like(temp))).T
 
-
     # Appends the value of the most repeated catalogue star ID from list of voted stars
     for i in range(NUM_STARS):
         
@@ -226,9 +210,8 @@ def gvAlgorithm(REF_ARR, STAR_VECTORS, STAR_CENTROIDS_UNCERTAINTY, return_VoteLi
     for i in range(NUM_STARS):
         for j in range(i+1, NUM_STARS):
             d_ij = vectorAngularDistance(STAR_VECTORS[i], STAR_VECTORS[j])
-            e_ij = uncertaintyAngularDistance(STAR_CENTROIDS_UNCERTAINTY[i], STAR_CENTROIDS_UNCERTAINTY[j])
-            r_ij = [d_ij - e_ij, d_ij + e_ij]
-            
+            r_ij = [d_ij - GLOBAL_SIGMA , d_ij + GLOBAL_SIGMA]
+                        
             # Reads the 'most probable' catalogue star ID of corresponding image star
             s1, s2 = VOTE_LIST_2[i, 1], VOTE_LIST_2[j, 1]
             
@@ -272,8 +255,8 @@ def main():
     # Initialize centroid data and the corresponding centroid uncertainty data generated from running feature extraction
     ### Example Initialization - Random Values
     centroid = np.random.random((10,2))*2
-    centroid_uncertainty = np.random.random(10)*0.0001
-    result = starMatch(REF_ARR=ref_array, STAR_CENTROIDS=centroid, STAR_CENTROIDS_UNCERTAINTY=centroid_uncertainty)
+    centroid_global_sigma = 2.21 #in degrees
+    result = starMatch(REF_ARR=ref_array, STAR_CENTROIDS=centroid, GLOBAL_SIGMA = centroid_global_sigma)
     print(result)
 
 if __name__ == '__main__':
@@ -282,16 +265,22 @@ if __name__ == '__main__':
 ###############################################
 # --> STATS
 '''
-%timeit starMatch(ref_array, np.random.random((40,2))*2, np.random.random(40)*0.0001)
-1.25 s ± 5.1 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+%timeit starMatch(ref_array, np.random.random((10,2))*2, 2.21)
+5.35 s ± 504 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
 
-%timeit starMatch(ref_array, np.random.random((20,2))*2, np.random.random(20)*0.0001)
-306 ms ± 4.14 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+%timeit starMatch(ref_array, np.random.random((5,2))*2, 2.21)
+1.28 s ± 179 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+----------
+%timeit starMatch(ref_array, np.random.random((10,2))*2, 1)
+2.77 s ± 192 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
 
-%timeit starMatch(ref_array, np.random.random((10,2))*2, np.random.random(10)*0.0001)
-74 ms ± 669 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+%timeit starMatch(ref_array, np.random.random((5,2))*2, 1)
+639 ms ± 88.4 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+----------
+%timeit starMatch(ref_array, np.random.random((10,2))*2, 0.5)
+1.35 s ± 123 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
 
-%timeit starMatch(ref_array, np.random.random((5,2))*2, np.random.random(5)*0.0001)
-18.3 ms ± 977 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+%timeit starMatch(ref_array, np.random.random((5,2))*2, 0.5)
+282 ms ± 38.6 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
 '''
 ###############################################
